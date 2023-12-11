@@ -320,7 +320,7 @@ impl Client {
         let my_nat_type = crate::get_nat_type(100).await;
         let mut is_local = false;
         for i in 1..=3 {
-            log::info!("#{} punch attempt with {}, id: {}", i, my_addr, peer);
+            log::info!("#{} punch attempt with {} and id {}, id: {}", i, my_addr, Config::get_id(), peer);
             let mut msg_out = RendezvousMessage::new();
             use hbb_common::protobuf::Enum;
             let nat_type = if interface.is_force_relay() {
@@ -328,8 +328,9 @@ impl Client {
             } else {
                 NatType::from_i32(my_nat_type).unwrap_or(NatType::UNKNOWN_NAT)
             };
+            log::info!("id format {}", format!("{};{}", peer.to_owned(), Config::get_id()));
             msg_out.set_punch_hole_request(PunchHoleRequest {
-                id: peer.to_owned(),
+                id: format!("{};{}", peer.to_owned(), Config::get_id()),
                 token: token.to_owned(),
                 nat_type: nat_type.into(),
                 licence_key: key.to_owned(),
@@ -346,21 +347,21 @@ impl Client {
                             if !ph.other_failure.is_empty() {
                                 bail!(ph.other_failure);
                             }
-                            match ph.failure.enum_value() {
-                                Ok(punch_hole_response::Failure::ID_NOT_EXIST) => {
-                                    bail!("ID does not exist");
+                                match ph.failure.enum_value() {
+                                    Ok(punch_hole_response::Failure::ID_NOT_EXIST) => {
+                                        bail!("ID does not exist");
+                                    }
+                                    Ok(punch_hole_response::Failure::OFFLINE) => {
+                                        bail!("Remote desktop is offline");
+                                    }
+                                    Ok(punch_hole_response::Failure::LICENSE_MISMATCH) => {
+                                        bail!("Key mismatch");
+                                    }
+                                    Ok(punch_hole_response::Failure::LICENSE_OVERUSE) => {
+                                        bail!("Key overuse");
+                                    }
+                                    _ => bail!("ID BLOQUEADO"),
                                 }
-                                Ok(punch_hole_response::Failure::OFFLINE) => {
-                                    bail!("Remote desktop is offline");
-                                }
-                                Ok(punch_hole_response::Failure::LICENSE_MISMATCH) => {
-                                    bail!("Key mismatch");
-                                }
-                                Ok(punch_hole_response::Failure::LICENSE_OVERUSE) => {
-                                    bail!("Key overuse");
-                                }
-                                _ => bail!("other punch hole failure"),
-                            }
                         } else {
                             peer_nat_type = ph.nat_type();
                             is_local = ph.is_local();
@@ -526,6 +527,7 @@ impl Client {
         key: &str,
         conn: &mut Stream,
     ) -> ResultType<Option<Vec<u8>>> {
+        log::info!("Peer test {:?}", peer_id);
         let rs_pk = get_rs_pk(if key.is_empty() {
             hbb_common::config::RS_PUB_KEY
         } else {
@@ -592,6 +594,7 @@ impl Client {
                 }
             }
             None => {
+                log::info!("Peer Teste");
                 bail!("Reset by the peer");
             }
         }

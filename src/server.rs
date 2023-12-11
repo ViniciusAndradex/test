@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
+use std::collections::HashSet;
 
 use bytes::Bytes;
 
@@ -24,6 +25,7 @@ use hbb_common::{
     sodiumoxide::crypto::{box_, sign},
     timeout, tokio, ResultType, Stream,
 };
+use hbb_common::log::logger;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use service::ServiceTmpl;
 use service::{EmptyExtraFieldService, GenericService, Service, Subscriber};
@@ -109,6 +111,7 @@ pub fn new() -> ServerPtr {
 }
 
 async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool) -> ResultType<()> {
+    log::info!("Entrei no acception");
     let local_addr = socket.local_addr();
     drop(socket);
     // even we drop socket, below still may fail if not use reuse_addr,
@@ -116,11 +119,14 @@ async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool) -> 
     // see “Only one usage of each socket address is normally permitted” on windows sometimes,
     let listener = new_listener(local_addr, true).await?;
     log::info!("Server listening on: {}", &listener.local_addr()?);
-    if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+
+     if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+        log::info!("Teste de ID.");
         stream.set_nodelay(true).ok();
         let stream_addr = stream.local_addr()?;
         create_tcp_connection(server, Stream::from(stream, stream_addr), addr, secure).await?;
     }
+
     Ok(())
 }
 
@@ -158,6 +164,7 @@ pub async fn create_tcp_connection(
             Some(res) => {
                 let bytes = res?;
                 if let Ok(msg_in) = Message::parse_from_bytes(&bytes) {
+                    log::info!("Testando msg_in {:?}", msg_in.union);
                     if let Some(message::Union::PublicKey(pk)) = msg_in.union {
                         if pk.asymmetric_value.len() == box_::PUBLICKEYBYTES {
                             stream.set_key(tcp::Encrypt::decode(
@@ -169,6 +176,7 @@ pub async fn create_tcp_connection(
                             Config::set_key_confirmed(false);
                             log::info!("Force to update pk");
                         } else {
+                            log::info!("Cheguei dentro da última condição do if de Some(message::Union::PublicKey(pk)) = msg_in.union ");
                             bail!("Handshake failed: invalid public sign key length from peer");
                         }
                     } else {
@@ -217,6 +225,7 @@ pub async fn create_relay_connection(
     secure: bool,
     ipv4: bool,
 ) {
+    log::info!("create_relay_connection chama create_relay_connection_");
     if let Err(err) =
         create_relay_connection_(server, relay_server, uuid.clone(), peer_addr, secure, ipv4).await
     {
@@ -250,6 +259,7 @@ async fn create_relay_connection_(
         ..Default::default()
     });
     stream.send(&msg_out).await?;
+    log::info!("create_relay_connection_ chama a segunda vez o create_tcp_connection, envia uma nova stream com uma mensagem nova");
     create_tcp_connection(server, stream, peer_addr, secure).await?;
     Ok(())
 }
@@ -538,16 +548,20 @@ async fn sync_and_watch_config_dir() {
     log::debug!("#tries of ipc service connection: {}", tries);
     use hbb_common::sleep;
     for i in 1..=tries {
+        log::info!("Entrei no loop");
         sleep(i as f32 * CONFIG_SYNC_INTERVAL_SECS).await;
         match crate::ipc::connect(1000, "_service").await {
             Ok(mut conn) => {
                 if !synced {
                     if conn.send(&Data::SyncConfig(None)).await.is_ok() {
+                        log::info!("Entrei no Send");
                         if let Ok(Some(data)) = conn.next_timeout(1000).await {
+                            log::info!("Ok do connect.");
                             match data {
                                 Data::SyncConfig(Some(configs)) => {
                                     let (config, config2) = *configs;
                                     let _chk = crate::ipc::CheckIfRestart::new();
+                                    log::info!("Cheguei até os configs");
                                     if !config.is_empty() {
                                         if cfg0.0 != config {
                                             cfg0.0 = config.clone();

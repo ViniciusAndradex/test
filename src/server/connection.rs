@@ -36,6 +36,7 @@ use hbb_common::{
     message_proto::{option_message::BoolOption, permission_info::Permission},
     password_security::{self as password, ApproveMode},
     sleep, timeout,
+    config::LocalConfig,
     tokio::{
         net::TcpStream,
         sync::mpsc,
@@ -895,6 +896,7 @@ impl Connection {
             .filter(|x| !x.is_empty())
             .map(|x| x.to_owned())
             .collect();
+        log::info!("whitelist: {:?}", whitelist);
         if !whitelist.is_empty()
             && whitelist
                 .iter()
@@ -907,7 +909,8 @@ impl Connection {
                 .next()
                 .is_none()
         {
-            self.send_login_error("Your ip is blocked by the peer")
+            // self.send_login_error("Your ip is blocked by the peer")
+            self.send_login_error("Seu IP está bloqueado pela outra máquina")
                 .await;
             Self::post_alarm_audit(
                 AlarmAuditType::IpWhitelist, //"ip whitelist",
@@ -3000,8 +3003,9 @@ fn try_activate_screen() {
 
 pub enum AlarmAuditType {
     IpWhitelist = 0,
-    ExceedThirtyAttempts = 1,
-    SixAttemptsWithinOneMinute = 2,
+    IdWhitelist = 1,
+    ExceedThirtyAttempts = 2,
+    SixAttemptsWithinOneMinute = 3,
 }
 
 pub enum FileAuditType {

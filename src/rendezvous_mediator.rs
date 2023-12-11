@@ -27,6 +27,7 @@ use hbb_common::{
     udp::FramedSocket,
     AddrMangle, ResultType,
 };
+use hbb_common::log::log;
 
 use crate::server::{check_zombie, new as new_server, ServerPtr};
 
@@ -37,7 +38,7 @@ lazy_static::lazy_static! {
 }
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RendezvousMediator {
     addr: hbb_common::tokio_socks::TargetAddr<'static>,
     host: String,
@@ -133,7 +134,7 @@ impl RendezvousMediator {
             host_prefix,
             last_id_pk_registry: "".to_owned(),
         };
-
+        log::info!("rz em start {:?}", rz);
         const TIMER_OUT: Duration = Duration::from_secs(1);
         let mut timer = interval(TIMER_OUT);
         let mut last_timer: Option<Instant> = None;
@@ -207,6 +208,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei o Handle_punch em start");
                                             allow_err!(rz.handle_punch_hole(ph, server).await);
                                         });
                                     }
@@ -214,6 +216,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei o Handle_request em start");
                                             allow_err!(rz.handle_request_relay(rr, server).await);
                                         });
                                     }
@@ -221,6 +224,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei a handle_intranet");
                                             allow_err!(rz.handle_intranet(fla, server).await);
                                         });
                                     }
@@ -330,6 +334,7 @@ impl RendezvousMediator {
         }
         msg_out.set_relay_response(rr);
         socket.send(&msg_out).await?;
+        log::info!("create relay foi chamada e agora está chamando create_relay_connection");
         crate::create_relay_connection(
             server,
             relay_server,
@@ -375,6 +380,7 @@ impl RendezvousMediator {
         });
         let bytes = msg_out.write_to_bytes()?;
         socket.send_raw(bytes).await?;
+        log::info!("Intranet - Teste");
         crate::accept_connection(server.clone(), socket, peer_addr, true).await;
         Ok(())
     }
@@ -385,6 +391,7 @@ impl RendezvousMediator {
             || Config::get_nat_type() == NatType::SYMMETRIC as i32
         {
             let uuid = Uuid::new_v4().to_string();
+            log::info!("Chamando o create_realy via handle_punch_hole");
             return self
                 .create_relay(
                     ph.socket_addr.into(),
@@ -398,6 +405,7 @@ impl RendezvousMediator {
         }
         let peer_addr = AddrMangle::decode(&ph.socket_addr);
         log::debug!("Punch hole to {:?}", peer_addr);
+        log::info!("Punch hole to {:?}", peer_addr);
         let mut socket = {
             let socket = socket_client::connect_tcp(&*self.host, CONNECT_TIMEOUT).await?;
             let local_addr = socket.local_addr();
@@ -409,6 +417,7 @@ impl RendezvousMediator {
         let mut msg_out = Message::new();
         use hbb_common::protobuf::Enum;
         let nat_type = NatType::from_i32(Config::get_nat_type()).unwrap_or(NatType::UNKNOWN_NAT);
+        log::info!("SET_PUNCH_HOLE_ID: {:?}", Config::get_id());
         msg_out.set_punch_hole_sent(PunchHoleSent {
             socket_addr: ph.socket_addr,
             id: Config::get_id(),
@@ -419,6 +428,7 @@ impl RendezvousMediator {
         });
         let bytes = msg_out.write_to_bytes()?;
         socket.send_raw(bytes).await?;
+        log::info!("handle_punch_hole - Teste");
         crate::accept_connection(server.clone(), socket, peer_addr, true).await;
         Ok(())
     }
@@ -470,6 +480,11 @@ impl RendezvousMediator {
         }
         let id = Config::get_id();
         log::trace!(
+            "Register my id {:?} to rendezvous server {:?}",
+            id,
+            self.addr,
+        );
+        log::info!(
             "Register my id {:?} to rendezvous server {:?}",
             id,
             self.addr,
@@ -578,6 +593,8 @@ pub async fn query_online_states<F: FnOnce(Vec<String>, Vec<String>)>(ids: Vec<S
         sleep(1.5).await;
         let mut onlines = ids;
         let offlines = onlines.drain((onlines.len() / 2)..).collect();
+        log::info!("Onlines: {:?}", onlines);
+        log::info!("Offlines: {:?}", offlines);
         f(onlines, offlines)
     } else {
         let query_begin = Instant::now();
@@ -588,6 +605,8 @@ pub async fn query_online_states<F: FnOnce(Vec<String>, Vec<String>)>(ids: Vec<S
             }
             match query_online_states_(&ids, query_timeout).await {
                 Ok((onlines, offlines)) => {
+                    log::info!("Else Onlines: {:?}", onlines);
+                    log::info!("Else Offlines: {:?}", offlines);
                     f(onlines, offlines);
                     break;
                 }

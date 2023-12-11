@@ -1345,6 +1345,7 @@ impl LocalConfig {
     }
 
     pub fn set_remote_id(remote_id: &str) {
+        log::info!("Remote ID, estou aceesando");
         let mut config = LOCAL_CONFIG.write().unwrap();
         if remote_id == config.remote_id {
             return;
@@ -1354,6 +1355,7 @@ impl LocalConfig {
     }
 
     pub fn get_remote_id() -> String {
+        log::info!("Remote ID, estou aceesando o get");
         LOCAL_CONFIG.read().unwrap().remote_id.clone()
     }
 
