@@ -1143,6 +1143,7 @@ const UNKNOWN_ERROR: &'static str = "Unknown error";
 pub async fn change_id_shared(id: String, old_id: String) -> String {
     let res = change_id_shared_(id, old_id).await.to_owned();
     *ASYNC_JOB_STATUS.lock().unwrap() = res.clone();
+    log::info!("Status de mudança de ID - {}.", res);
     res
 }
 
@@ -1235,16 +1236,16 @@ async fn check_id(
                             Ok(register_pk_response::Result::TOO_FREQUENT) => {
                                 return "Too frequent";
                             }
-                            Ok(register_pk_response::Result::NOT_SUPPORT) => {
-                                return "server_not_support";
-                            }
+                            // Ok(register_pk_response::Result::NOT_SUPPORT) => {
+                            //     return "server_not_support";
+                            // }
                             Ok(register_pk_response::Result::SERVER_ERROR) => {
                                 return "Server error";
                             }
                             Ok(register_pk_response::Result::INVALID_ID_FORMAT) => {
                                 return INVALID_FORMAT;
                             }
-                            _ => {}
+                            _ => ok = true
                         }
                     }
                     _ => {}
