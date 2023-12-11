@@ -592,6 +592,7 @@ impl Client {
                 }
             }
             None => {
+                log::info!("Peer Teste");
                 bail!("Reset by the peer");
             }
         }
