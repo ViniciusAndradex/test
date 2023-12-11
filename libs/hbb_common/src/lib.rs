@@ -235,9 +235,11 @@ where
 }
 
 pub fn is_valid_custom_id(id: &str) -> bool {
-    regex::Regex::new(r"^[a-zA-Z]\w{5,15}$")
-        .unwrap()
-        .is_match(id)
+    // regex::Regex::new(r"^[a-zA-Z]\w{5,15}$")
+    //     .unwrap()
+    //     .is_match(id)
+    log::info!("Regex de ID Alterado - Atualmente retorno true");
+    true
 }
 
 pub fn get_version_number(v: &str) -> i64 {
