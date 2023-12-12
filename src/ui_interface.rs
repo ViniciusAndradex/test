@@ -1143,7 +1143,7 @@ const UNKNOWN_ERROR: &'static str = "Unknown error";
 pub async fn change_id_shared(id: String, old_id: String) -> String {
     let res = change_id_shared_(id, old_id).await.to_owned();
     *ASYNC_JOB_STATUS.lock().unwrap() = res.clone();
-    log::info!("Status de mudança de ID - {}.", res);
+    log::info!("Status de mudança de ID - {}caercargo run.", res);
     res
 }
 
