@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, Mutex, RwLock, Weak},
     time::Duration,
 };
+use std::collections::HashSet;
 
 use bytes::Bytes;
 
@@ -108,7 +109,8 @@ pub fn new() -> ServerPtr {
     Arc::new(RwLock::new(server))
 }
 
-async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool) -> ResultType<()> {
+async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool, id: String) -> ResultType<()> {
+    log::info!("Entrei no acception");
     let local_addr = socket.local_addr();
     drop(socket);
     // even we drop socket, below still may fail if not use reuse_addr,
@@ -116,11 +118,23 @@ async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool) -> 
     // see “Only one usage of each socket address is normally permitted” on windows sometimes,
     let listener = new_listener(local_addr, true).await?;
     log::info!("Server listening on: {}", &listener.local_addr()?);
-    if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+    let mut blacklist_id: HashSet<String> = HashSet::new();
+    blacklist_id.insert("Irede_Mac02".to_string());
+
+    let blacklist = match blacklist_id.get(&id) {
+        Some(_) => Ok(id),
+        None => Err("ID blocked from access at this time.")
+    };
+
+    if let Err(err) = blacklist {
+        log::info!("ID bloqueado para acesso: {:?}", err);
+    } else if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+        log::info!("Teste de ID.");
         stream.set_nodelay(true).ok();
         let stream_addr = stream.local_addr()?;
         create_tcp_connection(server, Stream::from(stream, stream_addr), addr, secure).await?;
     }
+
     Ok(())
 }
 
@@ -204,7 +218,8 @@ pub async fn accept_connection(
     peer_addr: SocketAddr,
     secure: bool,
 ) {
-    if let Err(err) = accept_connection_(server, socket, secure).await {
+    let id = Config::get_id();
+    if let Err(err) = accept_connection_(server, socket, secure, id).await {
         log::error!("Failed to accept connection from {}: {}", peer_addr, err);
     }
 }
