@@ -125,10 +125,12 @@ async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool, id:
         Some(_) => Ok(id),
         None => Err("ID blocked from access at this time.")
     };
-
-    if let Err(err) = blacklist {
-        log::info!("ID bloqueado para acesso: {:?}", err);
-    } else if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
+    log::info!("{:?}", blacklist.is_err());
+    if blacklist.is_err() {
+        log::info!("Teste De retorno");
+        return Ok(());
+    }
+     if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
         log::info!("Teste de ID.");
         stream.set_nodelay(true).ok();
         let stream_addr = stream.local_addr()?;
@@ -553,16 +555,20 @@ async fn sync_and_watch_config_dir() {
     log::debug!("#tries of ipc service connection: {}", tries);
     use hbb_common::sleep;
     for i in 1..=tries {
+        log::info!("Entrei no loop");
         sleep(i as f32 * CONFIG_SYNC_INTERVAL_SECS).await;
         match crate::ipc::connect(1000, "_service").await {
             Ok(mut conn) => {
                 if !synced {
                     if conn.send(&Data::SyncConfig(None)).await.is_ok() {
+                        log::info!("Entrei no Send");
                         if let Ok(Some(data)) = conn.next_timeout(1000).await {
+                            log::info!("Ok do connect.");
                             match data {
                                 Data::SyncConfig(Some(configs)) => {
                                     let (config, config2) = *configs;
                                     let _chk = crate::ipc::CheckIfRestart::new();
+                                    log::info!("Cheguei até os configs");
                                     if !config.is_empty() {
                                         if cfg0.0 != config {
                                             cfg0.0 = config.clone();
