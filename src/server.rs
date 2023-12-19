@@ -25,6 +25,7 @@ use hbb_common::{
     sodiumoxide::crypto::{box_, sign},
     timeout, tokio, ResultType, Stream,
 };
+use hbb_common::log::logger;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use service::ServiceTmpl;
 use service::{EmptyExtraFieldService, GenericService, Service, Subscriber};
@@ -109,7 +110,7 @@ pub fn new() -> ServerPtr {
     Arc::new(RwLock::new(server))
 }
 
-async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool, id: String) -> ResultType<()> {
+async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool) -> ResultType<()> {
     log::info!("Entrei no acception");
     let local_addr = socket.local_addr();
     drop(socket);
@@ -118,18 +119,7 @@ async fn accept_connection_(server: ServerPtr, socket: Stream, secure: bool, id:
     // see “Only one usage of each socket address is normally permitted” on windows sometimes,
     let listener = new_listener(local_addr, true).await?;
     log::info!("Server listening on: {}", &listener.local_addr()?);
-    let mut blacklist_id: HashSet<String> = HashSet::new();
-    blacklist_id.insert("Irede_Mac02".to_string());
 
-    let blacklist = match blacklist_id.get(&id) {
-        Some(_) => Ok(id),
-        None => Err("ID blocked from access at this time.")
-    };
-    log::info!("{:?}", blacklist.is_err());
-    if blacklist.is_err() {
-        log::info!("Teste De retorno");
-        return Ok(());
-    }
      if let Ok((stream, addr)) = timeout(CONNECT_TIMEOUT, listener.accept()).await? {
         log::info!("Teste de ID.");
         stream.set_nodelay(true).ok();
@@ -174,6 +164,7 @@ pub async fn create_tcp_connection(
             Some(res) => {
                 let bytes = res?;
                 if let Ok(msg_in) = Message::parse_from_bytes(&bytes) {
+                    log::info!("Testando msg_in {:?}", msg_in.union);
                     if let Some(message::Union::PublicKey(pk)) = msg_in.union {
                         if pk.asymmetric_value.len() == box_::PUBLICKEYBYTES {
                             stream.set_key(tcp::Encrypt::decode(
@@ -185,6 +176,7 @@ pub async fn create_tcp_connection(
                             Config::set_key_confirmed(false);
                             log::info!("Force to update pk");
                         } else {
+                            log::info!("Cheguei dentro da última condição do if de Some(message::Union::PublicKey(pk)) = msg_in.union ");
                             bail!("Handshake failed: invalid public sign key length from peer");
                         }
                     } else {
@@ -220,8 +212,7 @@ pub async fn accept_connection(
     peer_addr: SocketAddr,
     secure: bool,
 ) {
-    let id = Config::get_id();
-    if let Err(err) = accept_connection_(server, socket, secure, id).await {
+    if let Err(err) = accept_connection_(server, socket, secure).await {
         log::error!("Failed to accept connection from {}: {}", peer_addr, err);
     }
 }
@@ -234,6 +225,7 @@ pub async fn create_relay_connection(
     secure: bool,
     ipv4: bool,
 ) {
+    log::info!("create_relay_connection chama create_relay_connection_");
     if let Err(err) =
         create_relay_connection_(server, relay_server, uuid.clone(), peer_addr, secure, ipv4).await
     {
@@ -267,6 +259,7 @@ async fn create_relay_connection_(
         ..Default::default()
     });
     stream.send(&msg_out).await?;
+    log::info!("create_relay_connection_ chama a segunda vez o create_tcp_connection, envia uma nova stream com uma mensagem nova");
     create_tcp_connection(server, stream, peer_addr, secure).await?;
     Ok(())
 }

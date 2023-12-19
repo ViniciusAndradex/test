@@ -27,6 +27,7 @@ use hbb_common::{
     udp::FramedSocket,
     AddrMangle, ResultType,
 };
+use hbb_common::log::log;
 
 use crate::server::{check_zombie, new as new_server, ServerPtr};
 
@@ -207,6 +208,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei o Handle_punch em start");
                                             allow_err!(rz.handle_punch_hole(ph, server).await);
                                         });
                                     }
@@ -214,6 +216,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei o Handle_request em start");
                                             allow_err!(rz.handle_request_relay(rr, server).await);
                                         });
                                     }
@@ -221,6 +224,7 @@ impl RendezvousMediator {
                                         let rz = rz.clone();
                                         let server = server.clone();
                                         tokio::spawn(async move {
+                                            log::info!("Chamei a handle_intranet");
                                             allow_err!(rz.handle_intranet(fla, server).await);
                                         });
                                     }
@@ -330,6 +334,7 @@ impl RendezvousMediator {
         }
         msg_out.set_relay_response(rr);
         socket.send(&msg_out).await?;
+        log::info!("create relay foi chamada e agora está chamando create_relay_connection");
         crate::create_relay_connection(
             server,
             relay_server,
@@ -375,6 +380,7 @@ impl RendezvousMediator {
         });
         let bytes = msg_out.write_to_bytes()?;
         socket.send_raw(bytes).await?;
+        log::info!("Intranet - Teste");
         crate::accept_connection(server.clone(), socket, peer_addr, true).await;
         Ok(())
     }
@@ -385,6 +391,7 @@ impl RendezvousMediator {
             || Config::get_nat_type() == NatType::SYMMETRIC as i32
         {
             let uuid = Uuid::new_v4().to_string();
+            log::info!("Chamando o create_realy via handle_punch_hole");
             return self
                 .create_relay(
                     ph.socket_addr.into(),
@@ -419,6 +426,7 @@ impl RendezvousMediator {
         });
         let bytes = msg_out.write_to_bytes()?;
         socket.send_raw(bytes).await?;
+        log::info!("handle_punch_hole - Teste");
         crate::accept_connection(server.clone(), socket, peer_addr, true).await;
         Ok(())
     }
