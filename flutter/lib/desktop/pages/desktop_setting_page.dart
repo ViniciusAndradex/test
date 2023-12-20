@@ -901,7 +901,7 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
                   ),
                   Expanded(
                       child: Text(
-                    translate('Use IP Whitelisting'),
+                    translate('Use IP/ID Whitelisting'),
                     style:
                         TextStyle(color: _disabledTextColor(context, enabled)),
                   ))
