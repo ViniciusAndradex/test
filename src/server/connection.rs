@@ -895,19 +895,25 @@ impl Connection {
             .filter(|x| !x.is_empty())
             .map(|x| x.to_owned())
             .collect();
+        log::info!("whitelist: {:?}", whitelist);
         if !whitelist.is_empty()
             && whitelist
                 .iter()
-                .filter(|x| x == &"0.0.0.0")
+                .filter(|x| x == &"Irede_Mac01")
                 .next()
                 .is_none()
-            && whitelist
-                .iter()
-                .filter(|x| IpCidr::from_str(x).map_or(false, |y| y.contains(addr.ip())))
-                .next()
-                .is_none()
+            // && whitelist
+            //     .iter()
+            //     .filter(|x| x == &"0.0.0.0")
+            //     .next()
+            //     .is_none()
+            // && whitelist
+            //     .iter()
+            //     .filter(|x| IpCidr::from_str(x).map_or(false, |y| y.contains(addr.ip())))
+            //     .next()
+            //     .is_none()
         {
-            self.send_login_error("Your ip is blocked by the peer")
+            self.send_login_error("Your id is blocked by the peer")
                 .await;
             Self::post_alarm_audit(
                 AlarmAuditType::IpWhitelist, //"ip whitelist",
@@ -917,6 +923,10 @@ impl Connection {
         }
         true
     }
+
+    // assync fn check_whitelist_id(&mut self, addr: &SocketAddr) -> bool {
+    //
+    // }
 
     async fn on_open(&mut self, addr: SocketAddr) -> bool {
         log::debug!("#{} Connection opened from {}.", self.inner.id, addr);
