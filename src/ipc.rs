@@ -683,7 +683,6 @@ where
                 return Ok(None);
             }
             _ => {
-                log::info!("Teste de chamada do next");
                 bail!("reset by the peer");
             }
         }

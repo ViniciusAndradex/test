@@ -36,6 +36,7 @@ use hbb_common::{
     message_proto::{option_message::BoolOption, permission_info::Permission},
     password_security::{self as password, ApproveMode},
     sleep, timeout,
+    config::LocalConfig,
     tokio::{
         net::TcpStream,
         sync::mpsc,
@@ -899,21 +900,17 @@ impl Connection {
         if !whitelist.is_empty()
             && whitelist
                 .iter()
-                .filter(|x| x == &"Irede_Mac01")
+                .filter(|x| x == &"0.0.0.0")
                 .next()
                 .is_none()
-            // && whitelist
-            //     .iter()
-            //     .filter(|x| x == &"0.0.0.0")
-            //     .next()
-            //     .is_none()
-            // && whitelist
-            //     .iter()
-            //     .filter(|x| IpCidr::from_str(x).map_or(false, |y| y.contains(addr.ip())))
-            //     .next()
-            //     .is_none()
+            && whitelist
+                .iter()
+                .filter(|x| IpCidr::from_str(x).map_or(false, |y| y.contains(addr.ip())))
+                .next()
+                .is_none()
         {
-            self.send_login_error("Your id is blocked by the peer")
+            // self.send_login_error("Your ip is blocked by the peer")
+            self.send_login_error("Seu IP está bloqueado pela outra máquina")
                 .await;
             Self::post_alarm_audit(
                 AlarmAuditType::IpWhitelist, //"ip whitelist",
@@ -924,13 +921,36 @@ impl Connection {
         true
     }
 
-    // assync fn check_whitelist_id(&mut self, addr: &SocketAddr) -> bool {
-    //
-    // }
+    async fn check_id_whitelist(&mut self) -> bool {
+        // log::info!("Remote {:?}", );
+
+        let id_whitelist: Vec<String> = Config::get_option("id_whitelist")
+            .split(",")
+            .filter(|x| !x.is_empty())
+            .map(|x| x.to_owned())
+            .collect();
+
+        if !id_whitelist.is_empty()
+        {
+            // self.send_login_error("Your id is blocked by the peer")
+            self.send_login_error("Seu ID está bloqueado pela outra máquina.")
+                .await;
+            log::info!("X: {:?}", id_whitelist.clone());
+            Self::post_alarm_audit(
+                AlarmAuditType::IdWhitelist, //"id whitelist",
+                json!({ "id_whitelist":id_whitelist }),
+            );
+            return false;
+        }
+        true
+    }
 
     async fn on_open(&mut self, addr: SocketAddr) -> bool {
         log::debug!("#{} Connection opened from {}.", self.inner.id, addr);
         if !self.check_whitelist(&addr).await {
+            return false;
+        }
+        if !self.check_id_whitelist().await {
             return false;
         }
         self.ip = addr.ip().to_string();
@@ -3010,8 +3030,9 @@ fn try_activate_screen() {
 
 pub enum AlarmAuditType {
     IpWhitelist = 0,
-    ExceedThirtyAttempts = 1,
-    SixAttemptsWithinOneMinute = 2,
+    IdWhitelist = 1,
+    ExceedThirtyAttempts = 2,
+    SixAttemptsWithinOneMinute = 3,
 }
 
 pub enum FileAuditType {
