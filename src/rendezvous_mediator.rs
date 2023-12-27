@@ -586,6 +586,8 @@ pub async fn query_online_states<F: FnOnce(Vec<String>, Vec<String>)>(ids: Vec<S
         sleep(1.5).await;
         let mut onlines = ids;
         let offlines = onlines.drain((onlines.len() / 2)..).collect();
+        log::info!("Onlines: {:?}", onlines);
+        log::info!("Offlines: {:?}", offlines);
         f(onlines, offlines)
     } else {
         let query_begin = Instant::now();
@@ -596,6 +598,8 @@ pub async fn query_online_states<F: FnOnce(Vec<String>, Vec<String>)>(ids: Vec<S
             }
             match query_online_states_(&ids, query_timeout).await {
                 Ok((onlines, offlines)) => {
+                    log::info!("Else Onlines: {:?}", onlines);
+                    log::info!("Else Offlines: {:?}", offlines);
                     f(onlines, offlines);
                     break;
                 }
