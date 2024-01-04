@@ -921,36 +921,9 @@ impl Connection {
         true
     }
 
-    async fn check_id_whitelist(&mut self) -> bool {
-        // log::info!("Remote {:?}", );
-
-        let id_whitelist: Vec<String> = Config::get_option("id_whitelist")
-            .split(",")
-            .filter(|x| !x.is_empty())
-            .map(|x| x.to_owned())
-            .collect();
-
-        if !id_whitelist.is_empty()
-        {
-            // self.send_login_error("Your id is blocked by the peer")
-            self.send_login_error("Seu ID está bloqueado pela outra máquina.")
-                .await;
-            log::info!("X: {:?}", id_whitelist.clone());
-            Self::post_alarm_audit(
-                AlarmAuditType::IdWhitelist, //"id whitelist",
-                json!({ "id_whitelist":id_whitelist }),
-            );
-            return false;
-        }
-        true
-    }
-
     async fn on_open(&mut self, addr: SocketAddr) -> bool {
         log::debug!("#{} Connection opened from {}.", self.inner.id, addr);
         if !self.check_whitelist(&addr).await {
-            return false;
-        }
-        if !self.check_id_whitelist().await {
             return false;
         }
         self.ip = addr.ip().to_string();
