@@ -320,7 +320,7 @@ impl Client {
         let my_nat_type = crate::get_nat_type(100).await;
         let mut is_local = false;
         for i in 1..=3 {
-            log::info!("#{} punch attempt with {}, id: {}", i, my_addr, peer);
+            log::info!("#{} punch attempt with {} and id {}, id: {}", i, my_addr, Config::get_id(), peer);
             let mut msg_out = RendezvousMessage::new();
             use hbb_common::protobuf::Enum;
             let nat_type = if interface.is_force_relay() {
@@ -328,8 +328,9 @@ impl Client {
             } else {
                 NatType::from_i32(my_nat_type).unwrap_or(NatType::UNKNOWN_NAT)
             };
+            log::info!("id format {}", format!("{};{}", peer.to_owned(), Config::get_id()));
             msg_out.set_punch_hole_request(PunchHoleRequest {
-                id: peer.to_owned(),
+                id: format!("{};{}", peer.to_owned(), Config::get_id()),
                 token: token.to_owned(),
                 nat_type: nat_type.into(),
                 licence_key: key.to_owned(),
