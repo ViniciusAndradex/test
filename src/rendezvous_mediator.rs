@@ -38,7 +38,7 @@ lazy_static::lazy_static! {
 }
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RendezvousMediator {
     addr: hbb_common::tokio_socks::TargetAddr<'static>,
     host: String,
@@ -134,7 +134,7 @@ impl RendezvousMediator {
             host_prefix,
             last_id_pk_registry: "".to_owned(),
         };
-
+        log::info!("rz em start {:?}", rz);
         const TIMER_OUT: Duration = Duration::from_secs(1);
         let mut timer = interval(TIMER_OUT);
         let mut last_timer: Option<Instant> = None;
@@ -405,6 +405,7 @@ impl RendezvousMediator {
         }
         let peer_addr = AddrMangle::decode(&ph.socket_addr);
         log::debug!("Punch hole to {:?}", peer_addr);
+        log::info!("Punch hole to {:?}", peer_addr);
         let mut socket = {
             let socket = socket_client::connect_tcp(&*self.host, CONNECT_TIMEOUT).await?;
             let local_addr = socket.local_addr();
@@ -416,6 +417,7 @@ impl RendezvousMediator {
         let mut msg_out = Message::new();
         use hbb_common::protobuf::Enum;
         let nat_type = NatType::from_i32(Config::get_nat_type()).unwrap_or(NatType::UNKNOWN_NAT);
+        log::info!("SET_PUNCH_HOLE_ID: {:?}", Config::get_id());
         msg_out.set_punch_hole_sent(PunchHoleSent {
             socket_addr: ph.socket_addr,
             id: Config::get_id(),
@@ -478,6 +480,11 @@ impl RendezvousMediator {
         }
         let id = Config::get_id();
         log::trace!(
+            "Register my id {:?} to rendezvous server {:?}",
+            id,
+            self.addr,
+        );
+        log::info!(
             "Register my id {:?} to rendezvous server {:?}",
             id,
             self.addr,
