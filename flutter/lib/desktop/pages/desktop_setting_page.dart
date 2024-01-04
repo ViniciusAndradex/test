@@ -777,7 +777,6 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
           reverse: true, enabled: enabled),
       ...directIp(context),
       whitelist(),
-      id_whitelist(),
       ...autoDisconnect(context),
     ]);
   }
@@ -918,53 +917,7 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
     return tmpWrapper();
   }
 
-  Widget id_whitelist() {
-      bool enabled = !locked;
-      // Simple temp wrapper for PR check
-      tmpWrapper() {
-        RxBool hasIdWhitelist =
-            bind.mainGetOptionSync(key: 'id_whitelist').isNotEmpty.obs;
-        update() async {
-          hasIdWhitelist.value =
-              bind.mainGetOptionSync(key: 'id_whitelist').isNotEmpty;
-        }
 
-        onChanged(bool? checked) async {
-          changeIdWhiteList(callback: update);
-        }
-
-        return GestureDetector(
-          child: Tooltip(
-            message: translate('whitelist_tip'),
-            child: Obx(() => Row(
-                  children: [
-                    Checkbox(
-                            value: hasIdWhitelist.value,
-                            onChanged: enabled ? onChanged : null)
-                        .marginOnly(right: 5),
-                    Offstage(
-                      offstage: !hasIdWhitelist.value,
-                      child: const Icon(Icons.warning_amber_rounded,
-                              color: Color.fromARGB(255, 255, 204, 0))
-                          .marginOnly(right: 5),
-                    ),
-                    Expanded(
-                        child: Text(
-                      translate('Use ID Whitelisting'),
-                      style:
-                          TextStyle(color: _disabledTextColor(context, enabled)),
-                    ))
-                  ],
-                )),
-          ),
-          onTap: () {
-            onChanged(!hasIdWhitelist.value);
-          },
-        ).marginOnly(left: _kCheckBoxLeftMargin);
-      }
-
-      return tmpWrapper();
-    }
 
   Widget hide_cm(bool enabled) {
     return ChangeNotifierProvider.value(
